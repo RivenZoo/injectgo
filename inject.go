@@ -12,15 +12,18 @@ type funcValue struct {
 	label string
 }
 
+// InjectFunc contains a function to new object and label of the function.
 type InjectFunc struct {
 	Fn    interface{} // func() T / func() (T, error)
 	Label string      // default selected
 }
 
+// FuncLabelSelector is used to decide a label is selected or not.
 type FuncLabelSelector interface {
 	IsLabelAllowed(string) bool
 }
 
+// Container receive all provided objects and function then inject all of them.
 type Container struct {
 	graph            *inject.Graph
 	namedValues      map[string]reflect.Value
@@ -29,6 +32,7 @@ type Container struct {
 	unnamedFunctions []funcValue
 }
 
+// NewContainer
 func NewContainer() (c *Container) {
 	c = &Container{
 		graph:            &inject.Graph{},
@@ -100,7 +104,7 @@ func (c *Container) validateFunc(name string, fn reflect.Value) {
 // Param label is associated with fn and can be selected.
 // Only selected function will call.
 // If label is empty, by default it is selected.
-func (c *Container) ProvideFunc(funcs ... InjectFunc) {
+func (c *Container) ProvideFunc(funcs ...InjectFunc) {
 	for i := range funcs {
 		ifn := funcs[i]
 		v := reflect.Indirect(reflect.ValueOf(ifn.Fn))
@@ -143,10 +147,7 @@ func (c *Container) callProvidedFunc(fn reflect.Value) (reflect.Value, error) {
 	panic(fmt.Errorf("call unsupport function"))
 }
 
-// Populate call all provided functions then inject all provided and returned by function objects.
-// It panics if any error occurs.
-// Param labelSelector choice function with it's label. If nil passed, all function will selected.
-func (c *Container) Populate(labelSelector FuncLabelSelector) {
+func (c *Container) newObjectsByFunctions(labelSelector FuncLabelSelector) {
 	for i := range c.unnamedFunctions {
 		label := c.unnamedFunctions[i].label
 		if labelSelector != nil && label != "" && !labelSelector.IsLabelAllowed(label) {
@@ -169,6 +170,9 @@ func (c *Container) Populate(labelSelector FuncLabelSelector) {
 		}
 		c.namedValues[name] = v
 	}
+}
+
+func (c *Container) provideObjects() {
 	for i := range c.unnamedValues {
 		err := c.graph.Provide(&inject.Object{Value: c.unnamedValues[i].Interface()})
 		if err != nil {
@@ -181,6 +185,14 @@ func (c *Container) Populate(labelSelector FuncLabelSelector) {
 			panic(fmt.Errorf("provide value: %s=%v error: %v", name, v, err))
 		}
 	}
+}
+
+// Populate call all provided functions then inject all provided and returned by function objects.
+// It panics if any error occurs.
+// Param labelSelector choice function with it's label. If nil passed, all function will selected.
+func (c *Container) Populate(labelSelector FuncLabelSelector) {
+	c.newObjectsByFunctions(labelSelector)
+	c.provideObjects()
 	err := c.graph.Populate()
 	if err != nil {
 		panic(fmt.Errorf("populate error: %v", err))

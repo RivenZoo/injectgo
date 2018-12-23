@@ -2,8 +2,9 @@ package injectgo_test
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"testing"
+
+	"github.com/pkg/errors"
 
 	"github.com/RivenZoo/injectgo"
 	"github.com/stretchr/testify/assert"
@@ -168,7 +169,7 @@ func TestInjectFunctions_LabelSelect(t *testing.T) {
 				b1 = &B{"generated b1"}
 				return b1, nil
 			},
-			Label: "b1",},
+			Label: "b1"},
 		targetFunc,
 		injectgo.InjectFunc{
 			Fn: func() *A { a = &A{}; return a },
