@@ -121,3 +121,66 @@ func TestInjectFunctions(t *testing.T) {
 		c.Populate(nil)
 	})
 }
+
+type labelSelector struct {
+	labels []string
+}
+
+func (s labelSelector) IsLabelAllowed(label string) bool {
+	for i := range s.labels {
+		if s.labels[i] == label {
+			return true
+		}
+	}
+	return false
+}
+
+func TestInjectFunctions_LabelSelect(t *testing.T) {
+	c := injectgo.NewContainer()
+
+	type B struct {
+		Name string
+	}
+
+	type A struct {
+		B        *B           `inject:""`
+		Stringer fmt.Stringer `inject:""`
+	}
+
+	var a *A
+	var b1 *B
+	var b2 *B
+
+	targetFunc := injectgo.InjectFunc{
+		Fn: func() (*B, error) {
+			b2 = &B{"generated b1"}
+			return b2, nil
+		},
+		Label: "b2",
+	}
+	targetLabel := targetFunc.Label
+
+	c.ProvideFunc(
+		injectgo.InjectFunc{
+			Fn: func() (*B, error) {
+				b1 = &B{"generated b1"}
+				return b1, nil
+			},
+			Label: "b1",},
+		targetFunc,
+		injectgo.InjectFunc{
+			Fn: func() *A { a = &A{}; return a },
+		},
+		injectgo.InjectFunc{
+			Fn: func() *Person { return &Person{Name: "unnamed person"} },
+		})
+
+	selector := labelSelector{labels: []string{targetLabel}}
+	c.Populate(selector)
+
+	assert.NotNil(t, a)
+	assert.Nil(t, b1)
+	assert.NotNil(t, b2)
+	assert.Equal(t, b2, a.B)
+	assert.NotEmpty(t, a.Stringer.String())
+}
