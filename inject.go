@@ -11,8 +11,8 @@ type Container struct {
 	graph            *inject.Graph
 	namedValues      map[string]reflect.Value
 	unnamedValues    []reflect.Value
-	namedFunctions   map[string]reflect.Value
-	unnamedFunctions []reflect.Value
+	namedFunctions   map[string]funcValue
+	unnamedFunctions []funcValue
 }
 
 // isStructPtrOrInterface return true if obj is pointer or interface.
@@ -68,22 +68,39 @@ func (c *Container) validateFunc(name string, fn reflect.Value) {
 	}
 }
 
+type funcValue struct {
+	fn    reflect.Value
+	label string
+}
+
+type InjectFunc struct {
+	Fn    interface{} // func() T / func() (T, error)
+	Label string      // default selected
+}
+
+type FuncLabelSelector interface {
+	IsLabelAllowed(string) bool
+}
+
 // ProvideFunc support function types:
 //	- func() T
-//	- func() T, error
+//	- func() (T, error)
 // If use unsupport function as arguments, it will panic.
-func (c *Container) ProvideFunc(fn interface{}) {
-	v := reflect.Indirect(reflect.ValueOf(fn))
+// Param label is associated with fn and can be selected.
+// Only selected function will call.
+// If label is empty, by default it is selected.
+func (c *Container) ProvideFunc(ifn InjectFunc) {
+	v := reflect.Indirect(reflect.ValueOf(ifn.Fn))
 	if v.Type().Kind() != reflect.Func {
 		panic(errValueNotFunction)
 	}
 	c.validateFunc("unamed", v)
-	c.unnamedFunctions = append(c.unnamedFunctions, v)
+	c.unnamedFunctions = append(c.unnamedFunctions, funcValue{fn: v, label: ifn.Label})
 }
 
 // ProvideFuncByName use `name` as object name, panic if name is duplicate.
-func (c *Container) ProvideFuncByName(name string, fn interface{}) {
-	v := reflect.Indirect(reflect.ValueOf(fn))
+func (c *Container) ProvideFuncByName(name string, ifn InjectFunc) {
+	v := reflect.Indirect(reflect.ValueOf(ifn.Fn))
 	if v.Type().Kind() != reflect.Func {
 		panic(errValueNotFunction)
 	}
@@ -94,7 +111,7 @@ func (c *Container) ProvideFuncByName(name string, fn interface{}) {
 	if _, ok := c.namedValues[name]; ok {
 		panic(fmt.Errorf("duplicate object name: %s", name))
 	}
-	c.namedFunctions[name] = v
+	c.namedFunctions[name] = funcValue{fn: v, label: ifn.Label}
 }
 
 func (c *Container) callProvidedFunc(fn reflect.Value) (reflect.Value, error) {
@@ -110,16 +127,25 @@ func (c *Container) callProvidedFunc(fn reflect.Value) (reflect.Value, error) {
 
 // Populate call all provided functions then inject all provided and returned by function objects.
 // It panics if any error occurs.
-func (c *Container) Populate() {
+// Param labelSelector choice function with it's label. If nil passed, all function will selected.
+func (c *Container) Populate(labelSelector FuncLabelSelector) {
 	for i := range c.unnamedFunctions {
-		v, err := c.callProvidedFunc(c.unnamedFunctions[i])
+		label := c.unnamedFunctions[i].label
+		if labelSelector != nil && label != "" && !labelSelector.IsLabelAllowed(label) {
+			continue
+		}
+		v, err := c.callProvidedFunc(c.unnamedFunctions[i].fn)
 		if err != nil {
 			panic(fmt.Errorf("unamed function error: %v", err))
 		}
 		c.unnamedValues = append(c.unnamedValues, v)
 	}
 	for name, fn := range c.namedFunctions {
-		v, err := c.callProvidedFunc(fn)
+		label := fn.label
+		if labelSelector != nil && label != "" && !labelSelector.IsLabelAllowed(label) {
+			continue
+		}
+		v, err := c.callProvidedFunc(fn.fn)
 		if err != nil {
 			panic(fmt.Errorf("function %s error: %v", name, err))
 		}
