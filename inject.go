@@ -7,12 +7,37 @@ import (
 	"github.com/facebookgo/inject"
 )
 
+type funcValue struct {
+	fn    reflect.Value
+	label string
+}
+
+type InjectFunc struct {
+	Fn    interface{} // func() T / func() (T, error)
+	Label string      // default selected
+}
+
+type FuncLabelSelector interface {
+	IsLabelAllowed(string) bool
+}
+
 type Container struct {
 	graph            *inject.Graph
 	namedValues      map[string]reflect.Value
 	unnamedValues    []reflect.Value
 	namedFunctions   map[string]funcValue
 	unnamedFunctions []funcValue
+}
+
+func NewContainer() (c *Container) {
+	c = &Container{
+		graph:            &inject.Graph{},
+		namedValues:      make(map[string]reflect.Value),
+		unnamedValues:    make([]reflect.Value, 0),
+		namedFunctions:   make(map[string]funcValue),
+		unnamedFunctions: make([]funcValue, 0),
+	}
+	return
 }
 
 // isStructPtrOrInterface return true if obj is pointer or interface.
@@ -66,20 +91,6 @@ func (c *Container) validateFunc(name string, fn reflect.Value) {
 			panic(fmt.Errorf("func %s second return value should be error", name))
 		}
 	}
-}
-
-type funcValue struct {
-	fn    reflect.Value
-	label string
-}
-
-type InjectFunc struct {
-	Fn    interface{} // func() T / func() (T, error)
-	Label string      // default selected
-}
-
-type FuncLabelSelector interface {
-	IsLabelAllowed(string) bool
 }
 
 // ProvideFunc support function types:
@@ -152,13 +163,13 @@ func (c *Container) Populate(labelSelector FuncLabelSelector) {
 		c.namedValues[name] = v
 	}
 	for i := range c.unnamedValues {
-		err := c.graph.Provide(&inject.Object{Value: c.unnamedValues[i]})
+		err := c.graph.Provide(&inject.Object{Value: c.unnamedValues[i].Interface()})
 		if err != nil {
 			panic(fmt.Errorf("provide value: %v error: %v", c.unnamedValues[i], err))
 		}
 	}
 	for name, v := range c.namedValues {
-		err := c.graph.Provide(&inject.Object{Name: name, Value: v})
+		err := c.graph.Provide(&inject.Object{Name: name, Value: v.Interface()})
 		if err != nil {
 			panic(fmt.Errorf("provide value: %s=%v error: %v", name, v, err))
 		}
