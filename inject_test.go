@@ -55,12 +55,21 @@ func TestInjectFields(t *testing.T) {
 		c.Populate(nil)
 	}, "should panic because no named value provided")
 
+	na = &NamedA{}
 	c = injectgo.NewContainer()
 	c.Provide(na, b)
 	c.ProvideByName("NameB", b)
 	c.Populate(nil)
 	assert.Equal(t, b, na.B)
 	assert.Equal(t, b, na.UnnamedB)
+
+	na = &NamedA{}
+	c = injectgo.NewContainer()
+	c.Provide(na)
+	c.ProvideByName("NameB", b)
+	c.Populate(nil)
+	// if no unnamed object provided, an empty object will be created
+	assert.Equal(t, &B{}, na.UnnamedB)
 }
 
 func TestInjectFunctions(t *testing.T) {
