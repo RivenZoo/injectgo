@@ -87,7 +87,7 @@ func (c *Container) validateFunc(name string, fn reflect.Value) {
 		panic(fmt.Errorf("func %s should be at most 2 return values", name))
 	}
 	if t.NumOut() == 2 {
-		if t.Out(1) != reflect.TypeOf(errValueNotFunction) {
+		if t.Out(1) != reflect.TypeOf((*error)(nil)).Elem() {
 			panic(fmt.Errorf("func %s second return value should be error", name))
 		}
 	}
@@ -100,13 +100,16 @@ func (c *Container) validateFunc(name string, fn reflect.Value) {
 // Param label is associated with fn and can be selected.
 // Only selected function will call.
 // If label is empty, by default it is selected.
-func (c *Container) ProvideFunc(ifn InjectFunc) {
-	v := reflect.Indirect(reflect.ValueOf(ifn.Fn))
-	if v.Type().Kind() != reflect.Func {
-		panic(errValueNotFunction)
+func (c *Container) ProvideFunc(funcs ... InjectFunc) {
+	for i := range funcs {
+		ifn := funcs[i]
+		v := reflect.Indirect(reflect.ValueOf(ifn.Fn))
+		if v.Type().Kind() != reflect.Func {
+			panic(errValueNotFunction)
+		}
+		c.validateFunc("unamed", v)
+		c.unnamedFunctions = append(c.unnamedFunctions, funcValue{fn: v, label: ifn.Label})
 	}
-	c.validateFunc("unamed", v)
-	c.unnamedFunctions = append(c.unnamedFunctions, funcValue{fn: v, label: ifn.Label})
 }
 
 // ProvideFuncByName use `name` as object name, panic if name is duplicate.
@@ -131,7 +134,11 @@ func (c *Container) callProvidedFunc(fn reflect.Value) (reflect.Value, error) {
 		return ret[0], nil
 	}
 	if len(ret) == 2 {
-		return ret[0], ret[1].Interface().(error)
+		var err error
+		if !ret[1].IsNil() {
+			err = ret[1].Interface().(error)
+		}
+		return ret[0], err
 	}
 	panic(fmt.Errorf("call unsupport function"))
 }
