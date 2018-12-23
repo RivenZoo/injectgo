@@ -43,21 +43,23 @@ func TestInjectFields(t *testing.T) {
 
 	/// test named inject
 	type NamedA struct {
-		B *B `inject:"NameB"`
+		B        *B `inject:"NameB"`
+		UnnamedB *B `inject:""`
 	}
 	c = injectgo.NewContainer()
 	na := &NamedA{}
 
-	c.Provide(na, b)
+	c.Provide(na, b, b)
 	assert.Panics(t, func() {
 		c.Populate(nil)
 	}, "should panic because no named value provided")
 
 	c = injectgo.NewContainer()
-	c.Provide(na)
+	c.Provide(na, b)
 	c.ProvideByName("NameB", b)
 	c.Populate(nil)
 	assert.Equal(t, b, na.B)
+	assert.Equal(t, b, na.UnnamedB)
 }
 
 func TestInjectFunctions(t *testing.T) {
