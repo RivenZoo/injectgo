@@ -9,6 +9,9 @@ type injectChecker struct {
 	unfulfilledUnnamedValues     map[reflect.Type]reflect.Value
 	unfulfilledUnnamedInterfaces map[reflect.Type]reflect.Value
 	unfulfilledNamedValues       map[string]reflect.Value
+
+	namedValues   map[string]reflect.Value
+	unnamedValues map[reflect.Type]reflect.Value
 }
 
 func newInjectChecker() *injectChecker {
@@ -16,10 +19,12 @@ func newInjectChecker() *injectChecker {
 		unfulfilledUnnamedValues:     make(map[reflect.Type]reflect.Value),
 		unfulfilledUnnamedInterfaces: make(map[reflect.Type]reflect.Value),
 		unfulfilledNamedValues:       make(map[string]reflect.Value),
+		namedValues:                  make(map[string]reflect.Value),
+		unnamedValues:                make(map[reflect.Type]reflect.Value),
 	}
 }
 
-func (c *injectChecker) pushInjectedValues(obj reflect.Value) {
+func (c *injectChecker) pushInjectedFields(obj reflect.Value) {
 	t := reflect.Indirect(obj).Type()
 	if t.Kind() != reflect.Struct {
 		return
@@ -53,6 +58,7 @@ func (c *injectChecker) pushInjectedValues(obj reflect.Value) {
 
 func (c *injectChecker) popFulfilledUnnamedValues(obj reflect.Value) {
 	t := obj.Type()
+	c.unnamedValues[t] = obj
 	if _, ok := c.unfulfilledUnnamedValues[t]; ok {
 		delete(c.unfulfilledUnnamedValues, t)
 	}
@@ -68,8 +74,19 @@ func (c *injectChecker) popFulfilledUnnamedValues(obj reflect.Value) {
 }
 
 func (c *injectChecker) popFulfilledNamedValues(name string, obj reflect.Value) {
+	c.namedValues[name] = obj
 	if _, ok := c.unfulfilledNamedValues[name]; ok {
 		delete(c.unfulfilledNamedValues, name)
+	}
+}
+
+// popRemainedValues should be called after all push/pop functions finished.
+func (c *injectChecker) popRemainedValues() {
+	for _, v := range c.unnamedValues {
+		c.popFulfilledUnnamedValues(v)
+	}
+	for n, v := range c.namedValues {
+		c.popFulfilledNamedValues(n, v)
 	}
 }
 

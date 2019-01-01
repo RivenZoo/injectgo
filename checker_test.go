@@ -30,7 +30,8 @@ func TestInjectChecker(t *testing.T) {
 
 	va := reflect.ValueOf(a)
 	c.popFulfilledUnnamedValues(va)
-	c.pushInjectedValues(va)
+	c.pushInjectedFields(va)
+	c.popRemainedValues()
 	assert.False(t, c.isAllFulfilled())
 	assert.NotEmpty(t, c.getUnfulfilledNamedValues())
 	assert.NotEmpty(t, c.getUnfulfilledUnnamedValues())
@@ -38,14 +39,35 @@ func TestInjectChecker(t *testing.T) {
 
 	vi := reflect.ValueOf(i)
 	c.popFulfilledUnnamedValues(vi)
-	c.pushInjectedValues(vi)
+	c.pushInjectedFields(vi)
+	c.popRemainedValues()
 	assert.False(t, c.isAllFulfilled())
 	assert.Empty(t, c.getUnfulfilledUnnamedValues())
 	assert.NotEmpty(t, c.getUnfulfilledNamedValues())
 
 	vd := reflect.ValueOf(d)
 	c.popFulfilledNamedValues("desc", vd)
-	c.pushInjectedValues(vd)
+	c.pushInjectedFields(vd)
+	c.popRemainedValues()
+	assert.True(t, c.isAllFulfilled())
+	assert.Empty(t, c.getUnfulfilledUnnamedValues())
+	assert.Empty(t, c.getUnfulfilledNamedValues())
+
+	a = &A{}
+	i = &Info{}
+	d = &ADesc{}
+
+	vi = reflect.ValueOf(i)
+	c.popFulfilledUnnamedValues(vi)
+	c.pushInjectedFields(vi)
+	va = reflect.ValueOf(a)
+	c.popFulfilledUnnamedValues(va)
+	c.pushInjectedFields(va)
+	vd = reflect.ValueOf(d)
+	c.popFulfilledNamedValues("desc", vd)
+	c.pushInjectedFields(vd)
+	c.popRemainedValues()
+
 	assert.True(t, c.isAllFulfilled())
 	assert.Empty(t, c.getUnfulfilledUnnamedValues())
 	assert.Empty(t, c.getUnfulfilledNamedValues())

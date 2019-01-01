@@ -72,7 +72,7 @@ func (c *Container) Provide(objs ...interface{}) {
 		// fulfill already exists object
 		c.checker.popFulfilledUnnamedValues(v)
 		// extract injected struct fields
-		c.checker.pushInjectedValues(v)
+		c.checker.pushInjectedFields(v)
 
 		c.unnamedValues = append(c.unnamedValues, v)
 	}
@@ -92,7 +92,7 @@ func (c *Container) ProvideByName(name string, obj interface{}) {
 	// fulfill already exists object
 	c.checker.popFulfilledNamedValues(name, v)
 	// extract injected struct fields
-	c.checker.pushInjectedValues(v)
+	c.checker.pushInjectedFields(v)
 
 	c.namedValues[name] = v
 }
@@ -176,8 +176,7 @@ func (c *Container) newObjectsByFunctions(labelSelector FuncLabelSelector) {
 		// fulfill already exists object
 		c.checker.popFulfilledUnnamedValues(v)
 		// extract injected struct fields
-		c.checker.pushInjectedValues(v)
-
+		c.checker.pushInjectedFields(v)
 		c.unnamedValues = append(c.unnamedValues, v)
 	}
 	for name, fn := range c.namedFunctions {
@@ -193,7 +192,7 @@ func (c *Container) newObjectsByFunctions(labelSelector FuncLabelSelector) {
 		// fulfill already exists object
 		c.checker.popFulfilledNamedValues(name, v)
 		// extract injected struct fields
-		c.checker.pushInjectedValues(v)
+		c.checker.pushInjectedFields(v)
 
 		c.namedValues[name] = v
 	}
@@ -220,6 +219,7 @@ func (c *Container) provideObjects() {
 func (c *Container) Populate(labelSelector FuncLabelSelector) {
 	c.newObjectsByFunctions(labelSelector)
 
+	c.checker.popRemainedValues()
 	if !c.checker.isAllFulfilled() {
 		unnamed := c.checker.getUnfulfilledUnnamedValues()
 		named := c.checker.getUnfulfilledNamedValues()
