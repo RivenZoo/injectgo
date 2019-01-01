@@ -58,7 +58,10 @@ func (c *injectChecker) pushInjectedFields(obj reflect.Value) {
 
 func (c *injectChecker) popFulfilledUnnamedValues(obj reflect.Value) {
 	t := obj.Type()
-	c.unnamedValues[t] = obj
+
+	if _, ok := c.unnamedValues[t]; !ok {
+		c.unnamedValues[t] = obj
+	}
 	if _, ok := c.unfulfilledUnnamedValues[t]; ok {
 		delete(c.unfulfilledUnnamedValues, t)
 	}
@@ -74,7 +77,9 @@ func (c *injectChecker) popFulfilledUnnamedValues(obj reflect.Value) {
 }
 
 func (c *injectChecker) popFulfilledNamedValues(name string, obj reflect.Value) {
-	c.namedValues[name] = obj
+	if _, ok := c.namedValues[name]; !ok {
+		c.namedValues[name] = obj
+	}
 	if _, ok := c.unfulfilledNamedValues[name]; ok {
 		delete(c.unfulfilledNamedValues, name)
 	}
@@ -83,10 +88,14 @@ func (c *injectChecker) popFulfilledNamedValues(name string, obj reflect.Value) 
 // popRemainedValues should be called after all push/pop functions finished.
 func (c *injectChecker) popRemainedValues() {
 	for _, v := range c.unnamedValues {
-		c.popFulfilledUnnamedValues(v)
+		if len(c.unfulfilledUnnamedInterfaces) > 0 || len(c.unfulfilledUnnamedValues) > 0 {
+			c.popFulfilledUnnamedValues(v)
+		}
 	}
 	for n, v := range c.namedValues {
-		c.popFulfilledNamedValues(n, v)
+		if len(c.unfulfilledNamedValues) > 0 {
+			c.popFulfilledNamedValues(n, v)
+		}
 	}
 }
 
