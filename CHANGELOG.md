@@ -1,5 +1,20 @@
 <a name=""></a>
-# [](https://github.com/RivenZoo/injectgo/compare/v0.1.0...v) (2018-12-23)
+# [](https://github.com/RivenZoo/injectgo/compare/v0.1.1...v) (2019-01-01)
+
+
+
+<a name="0.1.1"></a>
+## [0.1.1](https://github.com/RivenZoo/injectgo/compare/v0.1.0...v0.1.1) (2019-01-01)
+
+
+### Bug Fixes
+
+* check inject fields ([8d44125](https://github.com/RivenZoo/injectgo/commit/8d44125))
+
+
+### Features
+
+* add inject checker ([782f5e7](https://github.com/RivenZoo/injectgo/commit/782f5e7))
 
 
 
