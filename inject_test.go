@@ -1,4 +1,4 @@
-package injectgo_test
+package injectgo
 
 import (
 	"fmt"
@@ -6,7 +6,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/RivenZoo/injectgo"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +18,7 @@ func (p Person) String() string {
 }
 
 func TestInjectFields(t *testing.T) {
-	c := injectgo.NewContainer()
+	c := NewContainer()
 
 	type B struct {
 		Name string
@@ -47,7 +46,7 @@ func TestInjectFields(t *testing.T) {
 		B        *B `inject:"NameB"`
 		UnnamedB *B `inject:""`
 	}
-	c = injectgo.NewContainer()
+	c = NewContainer()
 	na := &NamedA{}
 
 	c.Provide(na, b, b)
@@ -56,7 +55,7 @@ func TestInjectFields(t *testing.T) {
 	}, "should panic because no named value provided")
 
 	na = &NamedA{}
-	c = injectgo.NewContainer()
+	c = NewContainer()
 	c.Provide(na, b)
 	c.ProvideByName("NameB", b)
 	c.Populate(nil)
@@ -64,16 +63,28 @@ func TestInjectFields(t *testing.T) {
 	assert.Equal(t, b, na.UnnamedB)
 
 	na = &NamedA{}
-	c = injectgo.NewContainer()
+	c = NewContainer()
 	c.Provide(na)
 	c.ProvideByName("NameB", b)
+	assert.Panics(t, func() {
+		defer func() {
+			i := recover()
+			if e, ok := i.(error); ok {
+				t.Log(e)
+			}
+			panic(i)
+		}()
+		c.Populate(nil)
+	}, "should panic because no unnamed object provided")
+
+	c.Provide(b)
 	c.Populate(nil)
-	// if no unnamed object provided, an empty object will be created
-	assert.Equal(t, &B{}, na.UnnamedB)
+	assert.Equal(t, b, na.UnnamedB)
+	t.Logf("%v, %v", na.UnnamedB, na.B)
 }
 
 func TestInjectFunctions(t *testing.T) {
-	c := injectgo.NewContainer()
+	c := NewContainer()
 
 	type B struct {
 		Name string
@@ -87,14 +98,14 @@ func TestInjectFunctions(t *testing.T) {
 	var a *A
 	var b *B
 
-	c.ProvideFunc(injectgo.InjectFunc{
+	c.ProvideFunc(InjectFunc{
 		Fn: func() (*B, error) {
 			b = &B{"generated b"}
 			return b, nil
 		},
-	}, injectgo.InjectFunc{
+	}, InjectFunc{
 		Fn: func() *A { a = &A{}; return a },
-	}, injectgo.InjectFunc{
+	}, InjectFunc{
 		Fn: func() *Person { return &Person{Name: "unnamed person"} },
 	})
 	c.Populate(nil)
@@ -109,10 +120,10 @@ func TestInjectFunctions(t *testing.T) {
 		B *B `inject:"NameB"`
 	}
 
-	c = injectgo.NewContainer()
+	c = NewContainer()
 	na := &NamedA{}
 	c.Provide(na)
-	c.ProvideFuncByName("NameB", injectgo.InjectFunc{
+	c.ProvideFuncByName("NameB", InjectFunc{
 		Fn: func() *B {
 			b = &B{"generated b"}
 			return b
@@ -122,9 +133,9 @@ func TestInjectFunctions(t *testing.T) {
 	assert.Equal(t, b, na.B)
 
 	/// test function return error
-	c = injectgo.NewContainer()
+	c = NewContainer()
 	assert.Panics(t, func() {
-		c.ProvideFunc(injectgo.InjectFunc{
+		c.ProvideFunc(InjectFunc{
 			Fn: func() (*B, error) {
 				b = &B{"generated b"}
 				return b, errors.New("unknown error")
@@ -148,7 +159,7 @@ func (s labelSelector) IsLabelAllowed(label string) bool {
 }
 
 func TestInjectFunctions_LabelSelect(t *testing.T) {
-	c := injectgo.NewContainer()
+	c := NewContainer()
 
 	type B struct {
 		Name string
@@ -163,7 +174,7 @@ func TestInjectFunctions_LabelSelect(t *testing.T) {
 	var b1 *B
 	var b2 *B
 
-	targetFunc := injectgo.InjectFunc{
+	targetFunc := InjectFunc{
 		Fn: func() (*B, error) {
 			b2 = &B{"generated b1"}
 			return b2, nil
@@ -173,17 +184,17 @@ func TestInjectFunctions_LabelSelect(t *testing.T) {
 	targetLabel := targetFunc.Label
 
 	c.ProvideFunc(
-		injectgo.InjectFunc{
+		InjectFunc{
 			Fn: func() (*B, error) {
 				b1 = &B{"generated b1"}
 				return b1, nil
 			},
 			Label: "b1"},
 		targetFunc,
-		injectgo.InjectFunc{
+		InjectFunc{
 			Fn: func() *A { a = &A{}; return a },
 		},
-		injectgo.InjectFunc{
+		InjectFunc{
 			Fn: func() *Person { return &Person{Name: "unnamed person"} },
 		})
 

@@ -7,6 +7,8 @@ import (
 	"github.com/facebookgo/inject"
 )
 
+const injectTag = "inject"
+
 type funcValue struct {
 	fn    reflect.Value
 	label string
@@ -30,6 +32,7 @@ type Container struct {
 	unnamedValues    []reflect.Value
 	namedFunctions   map[string]funcValue
 	unnamedFunctions []funcValue
+	checker          *injectChecker
 }
 
 // NewContainer
@@ -40,6 +43,7 @@ func NewContainer() (c *Container) {
 		unnamedValues:    make([]reflect.Value, 0),
 		namedFunctions:   make(map[string]funcValue),
 		unnamedFunctions: make([]funcValue, 0),
+		checker:          newInjectChecker(),
 	}
 	return
 }
@@ -65,6 +69,11 @@ func (c *Container) Provide(objs ...interface{}) {
 		if !c.isStructPtrOrInterface(v) {
 			panic(fmt.Errorf("check obj: %v error: %v", objs[i], errValueNotPtrOrInterface))
 		}
+		// fulfill already exists object
+		c.checker.popFulfilledUnnamedValues(v)
+		// extract injected struct fields
+		c.checker.pushInjectedValues(v)
+
 		c.unnamedValues = append(c.unnamedValues, v)
 	}
 }
@@ -79,6 +88,12 @@ func (c *Container) ProvideByName(name string, obj interface{}) {
 	if _, ok := c.namedValues[name]; ok {
 		panic(fmt.Errorf("duplicate object name: %s", name))
 	}
+
+	// fulfill already exists object
+	c.checker.popFulfilledNamedValues(name, v)
+	// extract injected struct fields
+	c.checker.pushInjectedValues(v)
+
 	c.namedValues[name] = v
 }
 
@@ -157,6 +172,12 @@ func (c *Container) newObjectsByFunctions(labelSelector FuncLabelSelector) {
 		if err != nil {
 			panic(fmt.Errorf("unamed function error: %v", err))
 		}
+
+		// fulfill already exists object
+		c.checker.popFulfilledUnnamedValues(v)
+		// extract injected struct fields
+		c.checker.pushInjectedValues(v)
+
 		c.unnamedValues = append(c.unnamedValues, v)
 	}
 	for name, fn := range c.namedFunctions {
@@ -168,6 +189,12 @@ func (c *Container) newObjectsByFunctions(labelSelector FuncLabelSelector) {
 		if err != nil {
 			panic(fmt.Errorf("function %s error: %v", name, err))
 		}
+
+		// fulfill already exists object
+		c.checker.popFulfilledNamedValues(name, v)
+		// extract injected struct fields
+		c.checker.pushInjectedValues(v)
+
 		c.namedValues[name] = v
 	}
 }
@@ -192,6 +219,14 @@ func (c *Container) provideObjects() {
 // Param labelSelector choice function with it's label. If nil passed, all function will selected.
 func (c *Container) Populate(labelSelector FuncLabelSelector) {
 	c.newObjectsByFunctions(labelSelector)
+
+	if !c.checker.isAllFulfilled() {
+		unnamed := c.checker.getUnfulfilledUnnamedValues()
+		named := c.checker.getUnfulfilledNamedValues()
+		panic(fmt.Errorf("named unfulfilled objects: %v, unnamed unfulfilled objects: %v",
+			named, unnamed))
+	}
+
 	c.provideObjects()
 	err := c.graph.Populate()
 	if err != nil {
