@@ -54,13 +54,22 @@ func TestInjectFields(t *testing.T) {
 		c.Populate(nil)
 	}, "should panic because no named value provided")
 
+	type NamedA2 struct {
+		B        *B `inject:"NameB"`
+		UnnamedB *B `inject:""`
+	}
+
 	na = &NamedA{}
+	na2 := &NamedA2{}
 	c = NewContainer()
-	c.Provide(na, b)
+	c.Provide(na, b, na2)
+
 	c.ProvideByName("NameB", b)
 	c.Populate(nil)
 	assert.Equal(t, b, na.B)
 	assert.Equal(t, b, na.UnnamedB)
+	assert.Equal(t, b, na2.B)
+	assert.Equal(t, b, na2.UnnamedB)
 
 	na = &NamedA{}
 	c = NewContainer()
