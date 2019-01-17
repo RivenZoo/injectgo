@@ -2,6 +2,7 @@ package injectgo
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -215,4 +216,83 @@ func TestInjectFunctions_LabelSelect(t *testing.T) {
 	assert.NotNil(t, b2)
 	assert.Equal(t, b2, a.B)
 	assert.NotEmpty(t, a.Stringer.String())
+}
+
+func TestSetValue(t *testing.T) {
+	type B struct {
+		Name string
+	}
+	b := B{"B"}
+	var pb *B
+	setFunctionReceiver(reflect.ValueOf(&b), reflect.ValueOf(&pb))
+
+	assert.Equal(t, &b, pb)
+
+	setFunctionReceiver(reflect.ValueOf(b), reflect.ValueOf(pb))
+	assert.Equal(t, b, *pb)
+}
+
+func TestInjectFunctionsReceiver(t *testing.T) {
+	c := NewContainer()
+
+	type B struct {
+		Name string
+	}
+
+	type A struct {
+		B        *B           `inject:""`
+		Stringer fmt.Stringer `inject:""`
+	}
+
+	var a *A
+	var b *B
+
+	c.ProvideFunc(InjectFunc{
+		Fn: func() (*B, error) {
+			return &B{"generated b"}, nil
+		},
+		Receiver: &b,
+	}, InjectFunc{
+		Fn:       func() *A { return &A{}; },
+		Receiver: &a,
+	}, InjectFunc{
+		Fn: func() *Person { return &Person{Name: "unnamed person"} },
+	})
+	c.Populate(nil)
+
+	assert.NotNil(t, a)
+	assert.NotNil(t, b)
+	assert.Equal(t, b, a.B)
+	assert.NotEmpty(t, a.Stringer.String())
+
+	/// test named function inject
+	type NamedA struct {
+		B *B `inject:"NameB"`
+	}
+	b = nil
+
+	c = NewContainer()
+	na := &NamedA{}
+	c.Provide(na)
+	c.ProvideFuncByName("NameB", InjectFunc{
+		Fn: func() *B {
+			return &B{"generated b"}
+		},
+		Receiver: &b,
+	})
+	c.Populate(nil)
+	assert.Equal(t, b, na.B)
+
+	/// test function wrong receiver
+	b = nil
+	c = NewContainer()
+	assert.Panics(t, func() {
+		c.ProvideFunc(InjectFunc{
+			Fn: func() (*B, error) {
+				return &B{"generated b"}, nil
+			},
+			Receiver: b,
+		})
+		c.Populate(nil)
+	}, "should panic because receiver should be &b")
 }

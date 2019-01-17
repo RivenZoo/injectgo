@@ -10,14 +10,16 @@ import (
 const injectTag = "inject"
 
 type funcValue struct {
-	fn    reflect.Value
-	label string
+	fn       reflect.Value
+	label    string
+	receiver interface{}
 }
 
 // InjectFunc contains a function to new object and label of the function.
 type InjectFunc struct {
-	Fn    interface{} // func() T / func() (T, error)
-	Label string      // default selected
+	Fn       interface{} // func() T / func() (T, error)
+	Label    string      // default selected
+	Receiver interface{} // *T, receive object from Fn
 }
 
 // FuncLabelSelector is used to decide a label is selected or not.
@@ -127,7 +129,10 @@ func (c *Container) ProvideFunc(funcs ...InjectFunc) {
 			panic(errValueNotFunction)
 		}
 		c.validateFunc("unamed", v)
-		c.unnamedFunctions = append(c.unnamedFunctions, funcValue{fn: v, label: ifn.Label})
+		c.unnamedFunctions = append(c.unnamedFunctions, funcValue{fn: v,
+			label:    ifn.Label,
+			receiver: ifn.Receiver,
+		})
 	}
 }
 
@@ -144,7 +149,10 @@ func (c *Container) ProvideFuncByName(name string, ifn InjectFunc) {
 	if _, ok := c.namedValues[name]; ok {
 		panic(fmt.Errorf("duplicate object name: %s", name))
 	}
-	c.namedFunctions[name] = funcValue{fn: v, label: ifn.Label}
+	c.namedFunctions[name] = funcValue{fn: v,
+		label:    ifn.Label,
+		receiver: ifn.Receiver,
+	}
 }
 
 func (c *Container) callProvidedFunc(fn reflect.Value) (reflect.Value, error) {
@@ -162,6 +170,10 @@ func (c *Container) callProvidedFunc(fn reflect.Value) (reflect.Value, error) {
 	panic(fmt.Errorf("call unsupport function"))
 }
 
+func setFunctionReceiver(v reflect.Value, receiver reflect.Value) {
+	receiver.Elem().Set(v)
+}
+
 func (c *Container) newObjectsByFunctions(labelSelector FuncLabelSelector) {
 	for i := range c.unnamedFunctions {
 		label := c.unnamedFunctions[i].label
@@ -171,6 +183,10 @@ func (c *Container) newObjectsByFunctions(labelSelector FuncLabelSelector) {
 		v, err := c.callProvidedFunc(c.unnamedFunctions[i].fn)
 		if err != nil {
 			panic(fmt.Errorf("unamed function error: %v", err))
+		}
+
+		if c.unnamedFunctions[i].receiver != nil {
+			setFunctionReceiver(v, reflect.ValueOf(c.unnamedFunctions[i].receiver))
 		}
 
 		// fulfill already exists object
@@ -187,6 +203,10 @@ func (c *Container) newObjectsByFunctions(labelSelector FuncLabelSelector) {
 		v, err := c.callProvidedFunc(fn.fn)
 		if err != nil {
 			panic(fmt.Errorf("function %s error: %v", name, err))
+		}
+
+		if fn.receiver != nil {
+			setFunctionReceiver(v, reflect.ValueOf(fn.receiver))
 		}
 
 		// fulfill already exists object
