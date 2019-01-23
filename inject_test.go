@@ -296,3 +296,32 @@ func TestInjectFunctionsReceiver(t *testing.T) {
 		c.Populate(nil)
 	}, "should panic because receiver should be &b")
 }
+
+type B struct {
+	Name string
+	A    *A `inject:""`
+}
+
+type A struct {
+	B        *B           `inject:""`
+	Stringer fmt.Stringer `inject:""`
+}
+
+func TestInjectFunctions_DependencyCyclic(t *testing.T) {
+	c := NewContainer()
+
+	a := &A{}
+	b := &B{"b", nil}
+	c.Provide(a, b, &Person{})
+
+	assert.Panics(t, func() {
+		c.Provide(B{})
+	}, "should panic because type not match")
+
+	c.Populate(nil)
+	assert.Equal(t, b, a.B)
+	assert.NotEmpty(t, a.Stringer.String())
+	assert.Equal(t, a, b.A)
+
+	t.Logf("%p,%p, %v, %v", a, b, a, b)
+}
