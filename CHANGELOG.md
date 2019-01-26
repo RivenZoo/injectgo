@@ -1,5 +1,30 @@
 <a name=""></a>
-# [](https://github.com/RivenZoo/injectgo/compare/v0.1.3...v) (2019-01-01)
+# [](https://github.com/RivenZoo/injectgo/compare/v0.3.0...v) (2019-01-26)
+
+
+
+<a name="0.3.0"></a>
+# [0.3.0](https://github.com/RivenZoo/injectgo/compare/v0.2.0...v0.3.0) (2019-01-26)
+
+
+### Features
+
+* add injected struct cyclic dependency detect ([318a437](https://github.com/RivenZoo/injectgo/commit/318a437))
+
+
+### Performance Improvements
+
+* prettify error message ([b187e34](https://github.com/RivenZoo/injectgo/commit/b187e34))
+
+
+
+<a name="0.2.0"></a>
+# [0.2.0](https://github.com/RivenZoo/injectgo/compare/v0.1.3...v0.2.0) (2019-01-17)
+
+
+### Features
+
+* add provide function return object receiver ([cd20ad9](https://github.com/RivenZoo/injectgo/commit/cd20ad9))
 
 
 
