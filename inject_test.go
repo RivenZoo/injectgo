@@ -318,10 +318,13 @@ func TestInjectFunctions_DependencyCyclic(t *testing.T) {
 		c.Provide(B{})
 	}, "should panic because type not match")
 
-	c.Populate(nil)
-	assert.Equal(t, b, a.B)
-	assert.NotEmpty(t, a.Stringer.String())
-	assert.Equal(t, a, b.A)
-
-	t.Logf("%p,%p, %v, %v", a, b, a, b)
+	assert.Panics(t, func() {
+		defer func() {
+			if e := recover(); e != nil {
+				t.Log(e)
+				panic(e)
+			}
+		}()
+		c.Populate(nil)
+	}, "should panic because dependency cyclic exists")
 }

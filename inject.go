@@ -35,6 +35,7 @@ type Container struct {
 	namedFunctions   map[string]funcValue
 	unnamedFunctions []funcValue
 	checker          *injectChecker
+	detector         *cyclicDetector
 }
 
 // NewContainer
@@ -46,6 +47,7 @@ func NewContainer() (c *Container) {
 		namedFunctions:   make(map[string]funcValue),
 		unnamedFunctions: make([]funcValue, 0),
 		checker:          newInjectChecker(),
+		detector:         newCyclicDetector(),
 	}
 	return
 }
@@ -76,6 +78,9 @@ func (c *Container) Provide(objs ...interface{}) {
 		// extract injected struct fields
 		c.checker.pushInjectedFields(v)
 
+		// add cyclic detector
+		c.detector.AddDetectObject(v)
+
 		c.unnamedValues = append(c.unnamedValues, v)
 	}
 }
@@ -95,6 +100,9 @@ func (c *Container) ProvideByName(name string, obj interface{}) {
 	c.checker.popFulfilledNamedValues(name, v)
 	// extract injected struct fields
 	c.checker.pushInjectedFields(v)
+
+	// add cyclic detector
+	c.detector.AddDetectObject(v)
 
 	c.namedValues[name] = v
 }
@@ -193,6 +201,10 @@ func (c *Container) newObjectsByFunctions(labelSelector FuncLabelSelector) {
 		c.checker.popFulfilledUnnamedValues(v)
 		// extract injected struct fields
 		c.checker.pushInjectedFields(v)
+
+		// add cyclic detector
+		c.detector.AddDetectObject(v)
+
 		c.unnamedValues = append(c.unnamedValues, v)
 	}
 	for name, fn := range c.namedFunctions {
@@ -213,6 +225,9 @@ func (c *Container) newObjectsByFunctions(labelSelector FuncLabelSelector) {
 		c.checker.popFulfilledNamedValues(name, v)
 		// extract injected struct fields
 		c.checker.pushInjectedFields(v)
+
+		// add cyclic detector
+		c.detector.AddDetectObject(v)
 
 		c.namedValues[name] = v
 	}
@@ -245,6 +260,11 @@ func (c *Container) Populate(labelSelector FuncLabelSelector) {
 		named := c.checker.getUnfulfilledNamedValues()
 		panic(fmt.Errorf("named unfulfilled objects: %v, unnamed unfulfilled objects: %v",
 			named, unnamed))
+	}
+
+	existsCyclic, cyclicPath := c.detector.DetectCyclic()
+	if existsCyclic {
+		panic(fmt.Errorf("dependency cyclic detected, cyclic path %s", cyclicPath.prettify()))
 	}
 
 	c.provideObjects()
