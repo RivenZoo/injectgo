@@ -3,6 +3,7 @@ package injectgo
 import (
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 type injectChecker struct {
@@ -118,4 +119,24 @@ func (c *injectChecker) isAllFulfilled() bool {
 	return len(c.unfulfilledNamedValues) == 0 &&
 		len(c.unfulfilledUnnamedValues) == 0 &&
 		len(c.unfulfilledUnnamedInterfaces) == 0
+}
+
+type fieldValueMap map[reflect.Type]reflect.Value
+
+func (fm fieldValueMap) prettify() string {
+	s := make([]string, 0, len(fm))
+	for tp, v := range fm {
+		s = append(s, fmt.Sprintf("(%v).{%v}", v.Type(), tp))
+	}
+	return strings.Join(s, " ")
+}
+
+type namedValueMap map[string]reflect.Value
+
+func (nm namedValueMap) prettify() string {
+	s := make([]string, 0, len(nm))
+	for name, v := range nm {
+		s = append(s, fmt.Sprintf("(%v):%s", v.Type(), name))
+	}
+	return strings.Join(s, " ")
 }

@@ -258,8 +258,8 @@ func (c *Container) Populate(labelSelector FuncLabelSelector) {
 	if !c.checker.isAllFulfilled() {
 		unnamed := c.checker.getUnfulfilledUnnamedValues()
 		named := c.checker.getUnfulfilledNamedValues()
-		panic(fmt.Errorf("named unfulfilled objects: %v, unnamed unfulfilled objects: %v",
-			named, unnamed))
+		panic(fmt.Errorf("named unfulfilled objects: %v, unnamed unfulfilled objects: %s",
+			(namedValueMap)(named).prettify(), (fieldValueMap)(unnamed).prettify()))
 	}
 
 	existsCyclic, cyclicPath := c.detector.DetectCyclic()

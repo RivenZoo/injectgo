@@ -52,6 +52,13 @@ func TestInjectFields(t *testing.T) {
 
 	c.Provide(na, b, b)
 	assert.Panics(t, func() {
+		defer func() {
+			i := recover()
+			if e, ok := i.(error); ok {
+				t.Log(e)
+			}
+			panic(i)
+		}()
 		c.Populate(nil)
 	}, "should panic because no named value provided")
 
@@ -297,9 +304,14 @@ func TestInjectFunctionsReceiver(t *testing.T) {
 	}, "should panic because receiver should be &b")
 }
 
-type B struct {
+type C struct {
 	Name string
 	A    *A `inject:""`
+}
+
+type B struct {
+	Name string
+	C    *C `inject:""`
 }
 
 type A struct {
@@ -308,14 +320,15 @@ type A struct {
 }
 
 func TestInjectFunctions_DependencyCyclic(t *testing.T) {
-	c := NewContainer()
+	container := NewContainer()
 
 	a := &A{}
 	b := &B{"b", nil}
-	c.Provide(a, b, &Person{})
+	c := &C{}
+	container.Provide(a, b, &Person{}, c)
 
 	assert.Panics(t, func() {
-		c.Provide(B{})
+		container.Provide(B{})
 	}, "should panic because type not match")
 
 	assert.Panics(t, func() {
@@ -325,6 +338,6 @@ func TestInjectFunctions_DependencyCyclic(t *testing.T) {
 				panic(e)
 			}
 		}()
-		c.Populate(nil)
+		container.Populate(nil)
 	}, "should panic because dependency cyclic exists")
 }

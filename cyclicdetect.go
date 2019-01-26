@@ -104,5 +104,5 @@ func (p depPath) prettify() string {
 	for i := range p {
 		s = append(s, fmt.Sprintf("%v", p[i]))
 	}
-	return strings.Join(s, "->")
+	return fmt.Sprintf("[%s]", strings.Join(s, " -> "))
 }
