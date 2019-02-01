@@ -231,11 +231,21 @@ func TestSetValue(t *testing.T) {
 	}
 	b := B{"B"}
 	var pb *B
-	setFunctionReceiver(reflect.ValueOf(&b), reflect.ValueOf(&pb))
+
+	ifn := InjectFunc{
+		Receiver: &pb,
+	}
+	ifn.setReceiver(reflect.ValueOf(&b))
 
 	assert.Equal(t, &b, pb)
 
-	setFunctionReceiver(reflect.ValueOf(b), reflect.ValueOf(pb))
+	b = B{"b"}
+	pb = &B{}
+
+	ifn = InjectFunc{
+		Receiver: pb,
+	}
+	ifn.setReceiver(reflect.ValueOf(b))
 	assert.Equal(t, b, *pb)
 }
 
