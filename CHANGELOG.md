@@ -1,5 +1,16 @@
 <a name=""></a>
-# [](https://github.com/RivenZoo/injectgo/compare/v0.3.0...v) (2019-01-26)
+# [](https://github.com/RivenZoo/injectgo/compare/v0.4.0...v) (2019-02-17)
+
+
+### Features
+
+* add optional Initializable/Closable interface for provided objects ([c41c255](https://github.com/RivenZoo/injectgo/commit/c41c255))
+* implement object graph ([369dd45](https://github.com/RivenZoo/injectgo/commit/369dd45))
+
+
+
+<a name="0.3.1"></a>
+## [0.3.1](https://github.com/RivenZoo/injectgo/compare/v0.3.0...v0.3.1) (2019-02-01)
 
 
 
