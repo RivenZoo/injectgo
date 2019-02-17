@@ -3,8 +3,6 @@ package injectgo
 import (
 	"fmt"
 	"reflect"
-
-	"github.com/facebookgo/inject"
 )
 
 const injectTag = "inject"
@@ -16,7 +14,7 @@ type FuncLabelSelector interface {
 
 // Container receive all provided objects and function then inject all of them.
 type Container struct {
-	graph            *inject.Graph
+	graph            *objectGraph
 	namedValues      map[string]reflect.Value
 	unnamedValues    []reflect.Value
 	namedFunctions   map[string]InjectFunc
@@ -28,7 +26,7 @@ type Container struct {
 // NewContainer
 func NewContainer() (c *Container) {
 	c = &Container{
-		graph:            &inject.Graph{},
+		graph:            newObjectGraph(),
 		namedValues:      make(map[string]reflect.Value),
 		unnamedValues:    make([]reflect.Value, 0),
 		namedFunctions:   make(map[string]InjectFunc),
@@ -173,22 +171,17 @@ func (c *Container) newObjectsByFunctions(labelSelector FuncLabelSelector) {
 
 func (c *Container) provideObjects() {
 	for i := range c.unnamedValues {
-		err := c.graph.Provide(&inject.Object{Value: c.unnamedValues[i].Interface()})
-		if err != nil {
-			panic(fmt.Errorf("provide value: %v error: %v", c.unnamedValues[i], err))
-		}
+		c.graph.ProvideObj(c.unnamedValues[i])
 	}
 	for name, v := range c.namedValues {
-		err := c.graph.Provide(&inject.Object{Name: name, Value: v.Interface()})
-		if err != nil {
-			panic(fmt.Errorf("provide value: %s=%v error: %v", name, v, err))
-		}
+		c.graph.ProvideNamedObj(name, v)
 	}
 }
 
 // Populate call all provided functions then inject all provided and returned by function objects.
 // It panics if any error occurs.
 // Param labelSelector choice function with it's label. If nil passed, all function will selected.
+// If Initializable is implemented, Init method will be called after object populated.
 func (c *Container) Populate(labelSelector FuncLabelSelector) {
 	c.newObjectsByFunctions(labelSelector)
 
@@ -206,8 +199,11 @@ func (c *Container) Populate(labelSelector FuncLabelSelector) {
 	}
 
 	c.provideObjects()
-	err := c.graph.Populate()
-	if err != nil {
-		panic(fmt.Errorf("Populate error: %v", err))
-	}
+	c.graph.Populate()
+}
+
+// Close will call Close method if Closable is implemented.
+// It panics if any error occurs.
+func (c *Container) Close() {
+	c.graph.Close()
 }
