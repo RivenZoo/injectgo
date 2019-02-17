@@ -24,7 +24,7 @@ type Model struct {
 
 type dummyLogger struct{}
 
-func (l dummyLogger) Println(s interface{}) {
+func (l *dummyLogger) Println(s interface{}) {
     fmt.Println(s)
 }
 
