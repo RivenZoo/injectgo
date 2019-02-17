@@ -208,6 +208,6 @@ func (c *Container) Populate(labelSelector FuncLabelSelector) {
 	c.provideObjects()
 	err := c.graph.Populate()
 	if err != nil {
-		panic(fmt.Errorf("populate error: %v", err))
+		panic(fmt.Errorf("Populate error: %v", err))
 	}
 }
