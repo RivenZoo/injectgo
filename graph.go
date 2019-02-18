@@ -195,17 +195,22 @@ func (g *objectGraph) Populate() {
 
 func (g *objectGraph) populateNamedObjects() {
 	for _, injObj := range g.namedObjects {
-		g.populateObject(injObj)
+		g.populateObject(injObj, 0)
 	}
 }
 
 func (g *objectGraph) populateUnnamedObjects() {
 	for _, injObj := range g.unnamedObjects {
-		g.populateObject(injObj)
+		g.populateObject(injObj, 0)
 	}
 }
 
-func (g *objectGraph) populateObject(obj *injectObject) {
+const maxCallDepth = 1048576
+
+func (g *objectGraph) populateObject(obj *injectObject, depth int) {
+	if depth > maxCallDepth {
+		panic(fmt.Errorf("object %s call stack overflow, depth %d", obj, depth))
+	}
 	fields := obj.UnfulfilledFields()
 	for i := range fields {
 		field := &fields[i]
@@ -213,7 +218,9 @@ func (g *objectGraph) populateObject(obj *injectObject) {
 		if injObj == nil {
 			panic(fmt.Errorf("field (%s) of %s has no matching object", field.fieldType, obj.value))
 		}
-		g.populateObject(injObj)
+
+		depth++
+		g.populateObject(injObj, depth)
 		if injObj.isComplete {
 			obj.SetField(injObj.value, field)
 		}
