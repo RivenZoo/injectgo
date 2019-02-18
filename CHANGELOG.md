@@ -1,3 +1,13 @@
+<a name="0.4.1"></a>
+# [0.4.1](https://github.com/RivenZoo/injectgo/compare/v0.4.1...v0.4.0) (2019-02-18)
+
+
+### Performance Improvements
+
+* prevent stack overflow ([d874c53](https://github.com/RivenZoo/injectgo/commit/d874c53))
+
+
+
 <a name="0.4.0"></a>
 # [0.4.0](https://github.com/RivenZoo/injectgo/compare/v0.4.0...v0.3.1) (2019-02-17)
 
