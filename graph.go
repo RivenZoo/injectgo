@@ -101,8 +101,9 @@ type objectGraph struct {
 	fulfilledUnnamedObjects map[reflect.Type]*injectObject
 	fulfilledNamedObjects   map[string]*injectObject
 
-	initObjects  []Initializable // objects need to be initialized
-	closeObjects []Closable      // objects need to be closed
+	addedObjectsPtr map[uintptr]bool
+	initObjects     []Initializable // objects need to be initialized
+	closeObjects    []Closable      // objects need to be closed
 }
 
 func newObjectGraph() *objectGraph {
@@ -113,6 +114,7 @@ func newObjectGraph() *objectGraph {
 		fulfilledNamedObjects:   map[string]*injectObject{},
 		initObjects:             make([]Initializable, 0),
 		closeObjects:            make([]Closable, 0),
+		addedObjectsPtr:         make(map[uintptr]bool),
 	}
 }
 
@@ -121,6 +123,14 @@ func (g *objectGraph) addObjectCall(obj *injectObject) {
 		return
 	}
 	obj.isMethodCallAdded = true
+
+	if obj.value.Type().Kind() == reflect.Ptr {
+		ptr := obj.value.Pointer()
+		if _, ok := g.addedObjectsPtr[ptr]; ok {
+			return
+		}
+		g.addedObjectsPtr[ptr] = true
+	}
 
 	i := obj.value.Interface()
 	if initObj, ok := i.(Initializable); ok {
